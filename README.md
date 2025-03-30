@@ -13,18 +13,23 @@
 在以下环境中测试了代码：
 
 - Ubuntu 20.04
-- NVIDIA驱动程序：535.183.01
+- [NVIDIA驱动程序](https://www.cnblogs.com/nannandbk/p/18144618)：535.183.01
 - [CUDA 12.0](https://blog.51cto.com/u_16213611/10480090)
 - Python 3.7 
 - [PyTorch 1.10.1+cu111](https://pytorch.org/get-started/previous-versions/)
-- Isaac Gym：preview4
+- [Isaac Gym：preview4](https://developer.nvidia.com/isaac-gym/download)
 
  
 **1. 创建环境&安装pytorch**
-- `conda create -n cdh python=3.7.16`
-- `conda activate cdh`
-- `pip install torch==1.10.1+cu111 torchvision==0.11.2+cu111 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html`
-
+-  创建python3.7环境：
+    ```bash
+    conda create -n cdh python=3.7.16 && conda activate cdh
+    ```
+-  安装PyTorch 1.10.1+cu111：
+    ```bash
+    pip install torch==1.10.1+cu111 torchvision==0.11.2+cu111 torchaudio==0.10.1 -f https://download.pytorch.org/whl/cu111/torch_stable.html
+    ```
+ 
 **2. 安装Isaac Gym**
 
 -  从 [Isaac Gym官网](https://developer.nvidia.com/isaac-gym) 下载 Isaac Gym preview4 。
@@ -34,7 +39,7 @@
     ```
 -  开始安装环境：
     ```bash
-    cd isaacgym/python && pip install -e .
+    conda activate cdh && cd ~/isaacgym/python && pip install -e .
     ```
 -  设置快速激活环境的别名，输入 `cdh` 即可激活虚拟环境：
     ```bash
@@ -42,11 +47,13 @@
     ```
 
 **3. 克隆仓库**
+-  克隆本仓库至主目录：
 ```bash
-cd ~ && git clone https://github.com/cdh66666/cdh.git && cd cdh
+cd ~ && git clone https://github.com/cdh66666/cdh.git
 ```
 
 **4. 测试示例**
+- 运行以下代码，能出现仿真界面即安装成功：
 ```bash
 cdh && cd ~/cdh && python test.py
 ```
