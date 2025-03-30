@@ -42,19 +42,19 @@
 
 #### 2. 克隆仓库
 ```bash
-git clone https://github.com/cdh66666/cdh.git
-cd ~/cdh
+cd ~ && git clone https://github.com/cdh66666/cdh.git
 ```
 
 
 ### 教程
 
 1. 训练一个策略：
-
+  - `cdh`
   - `cd ~/cdh/scripts`
   - `python train.py`
 
 2. 运行并导出最新的策略：
+  - `cdh` 
   - `cd ~/cdh/scripts`
   - `python play.py`
 
