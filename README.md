@@ -28,7 +28,7 @@
     ```
 2. 将环境名字从 `rlgpu` 替换为 `cdh`：
     ```bash
-    sed -i 's/rlgpu/cdh/g' ~/isaacgym/create_conda_env_rlgpu.sh
+    sed -i '/rlgpu_conda_env.yml/!s/rlgpu/cdh/g' ~/isaacgym/create_conda_env_rlgpu.sh
     sed -i 's/rlgpu/cdh/g' ~/isaacgym/python/rlgpu_conda_env.yml
     ```
 3. 开始创建环境：
