@@ -6,7 +6,7 @@ from isaacgym import gymutil
 from isaacgym import gymapi
 # 从math库中导入sqrt函数，用于计算平方根
 from math import sqrt
-
+#
 
 # 初始化Isaac Gym，获取gym对象
 gym = gymapi.acquire_gym()
@@ -46,8 +46,6 @@ sim_params.physx.rest_offset = 0.0
 # 设置重力
 sim_params.gravity = gymapi.Vec3(0.0, 0.0, -9.81)
 
-
-
 # 创建模拟环境
 sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
 # 如果模拟环境创建失败
@@ -62,7 +60,7 @@ plane_params = gymapi.PlaneParams()
 plane_params.normal = gymapi.Vec3(0, 0, 1)
 # 向模拟环境中添加地面平面
 gym.add_ground(sim, plane_params)
-
+ 
 
 # 创建查看器
 viewer = gym.create_viewer(sim, gymapi.CameraProperties())
@@ -101,7 +99,7 @@ gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
 # 订阅空格键事件，当按下空格键时触发 "print_camera_info" 动作
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_SPACE, "print_camera_info")
 
-
+ 
 # 设置随机数种子，确保结果可复现
 np.random.seed(17)
 
@@ -163,13 +161,14 @@ initial_state = np.copy(gym.get_sim_rigid_body_states(sim, gymapi.STATE_ALL))
 
 # 主循环，直到查看器关闭
 while not gym.query_viewer_has_closed(viewer):
-
-
     # 获取查看器的输入动作并进行相应处理
     for evt in gym.query_viewer_action_events(viewer):
         if evt.action == "reset" and evt.value > 0:
             # 如果按下 'R' 键，重置模拟状态
             gym.set_sim_rigid_body_states(sim, initial_state, gymapi.STATE_ALL)
+        if evt.action == "print_camera_info" and evt.value > 0:
+            # 如果按下 'print_camera_info' 键，打印相机信息
+            print("print_camera_info")
  
 
     # 进行物理模拟步骤
