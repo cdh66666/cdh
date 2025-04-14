@@ -63,7 +63,7 @@ gym.add_ground(sim, plane_params)
 # 加载资产文件会创建一个GymAsset对象，其中包含所有物体、碰撞形状、视觉附件、关节和自由度 (DOF) 的定义。
 # 某些格式还支持软体和粒子。
 asset_root = "assets"
-asset_file = "urdf/anymal.urdf"
+asset_file = "urdf/cartpole.urdf"
 asset_options = gymapi.AssetOptions()
 asset_options.vhacd_enabled = False
 # 该load_asset方法使用文件扩展名来确定资产文件格式。
