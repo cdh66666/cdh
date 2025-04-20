@@ -63,7 +63,7 @@ unzip rsl_rl-main.zip -d ~ && mv ~/rsl_rl-main ~/rsl_rl
 ```bash
 cdh && cd ~/rsl_rl && pip install -e .
 ```
-- 出现success即安装成功。
+- 出现**success**即安装成功。
  
  
 **4. 克隆仓库**
@@ -82,8 +82,15 @@ cdh && cd ~/cdh && pip install -e . ##待定
 cdh && cd ~/cdh && python ./test/test.py
 ```
 
-
-
+### 调试
+```bash
+RuntimeError: Ninja is required to load C++ extensions
+```
+**解决办法：**
+```bash
+sudo apt-get update
+sudo apt-get install ninja-build
+```
 
 
 ### 教程
