@@ -43,7 +43,7 @@ if sim is None:
     quit()
  
 # load ball asset
-asset_root = "assets"
+asset_root = "resources/ball"
 asset_file = "urdf/ball.urdf"
 asset = gym.load_asset(sim, asset_root, asset_file, gymapi.AssetOptions())
 

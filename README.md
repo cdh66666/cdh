@@ -15,15 +15,15 @@
 - Ubuntu 20.04
 - [NVIDIA驱动程序](https://www.cnblogs.com/nannandbk/p/18144618)：535.183.01
 - [CUDA 12.0](https://blog.51cto.com/u_16213611/10480090)
-- Python 3.7 
+- Python 3.8 
 - [PyTorch 1.13.1+cu117](https://pytorch.org/get-started/previous-versions/)
 - [Isaac Gym：preview4](https://developer.nvidia.com/isaac-gym/download)
-
+- [rsl_rl](https://github.com/leggedrobotics/rsl_rl)
  
 **1. 创建环境&安装pytorch**
 -  创建python3.7环境：
     ```bash
-    conda create -n cdh python=3.7.16 && conda activate cdh
+    conda create -n cdh python=3.8 && conda activate cdh
     ```
 -  安装PyTorch 1.13.1+cu117：
     ```bash
@@ -52,23 +52,20 @@
 -  出现以下界面即安装成功：![猴子仿真界面](img_for_readme/image.png)
 
 
-**3. 安装IsaacGymEnvs**
+**3. 安装rsl_rl库**
 
--  从 [IsaacGymEnvs github仓库](https://github.com/isaac-sim/IsaacGymEnvs)下载ZIP。
--  解压至主目录：
-    ```bash
-    unzip IsaacGymEnvs-main.zip -d ~/IsaacGymEnvs
-    ```
--  开始安装环境：
-    ```bash
-    conda activate cdh && cd ~/IsaacGymEnvs && pip install -e .
-    ```
--  测试安装：
-    ```bash
-    cdh && cd IsaacGymEnvs/isaacgymenvs && python train.py task=Cartpole
-    ```
--  出现以下界面即安装成功：![倒立摆训练](img_for_readme/image-1.png)
-
+- 从 [rsl_rl github仓库](https://github.com/leggedrobotics/rsl_rl) 下载ZIP。
+- 解压至主目录并更改文件夹名字：
+```bash
+unzip rsl_rl-main.zip -d ~ && mv ~/rsl_rl-main ~/rsl_rl
+```
+- 开始安装环境：
+```bash
+cdh && cd ~/rsl_rl && pip install -e .
+```
+- 出现success即安装成功。
+ 
+ 
 **4. 克隆仓库**
 -  克隆本仓库至主目录：
 ```bash
@@ -82,7 +79,7 @@ cdh && cd ~/cdh && pip install -e . ##待定
 **5. 测试示例**
 - 运行以下代码，能出现仿真界面即安装成功：
 ```bash
-cdh && cd ~/cdh && python test.py
+cdh && cd ~/cdh/test && python test.py
 ```
 
 
@@ -90,7 +87,9 @@ cdh && cd ~/cdh && python test.py
 
 
 ### 教程
-**官方文档**：解压安装包后，可以在`isaacgym/docs`目录下找到`index.html`文件，双击即可打开官方文档。
+**📚官方文档**：解压安装包后，可以在`isaacgym/docs`目录下找到`index.html`文件，双击即可打开官方文档。
+
+**📚cdh文档**：
 1. 训练一个策略：
   - `cdh && cd ~/cdh/scripts && python train.py`
  

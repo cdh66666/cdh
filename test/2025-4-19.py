@@ -43,7 +43,7 @@ if sim is None:
     quit()
  
 '''--------------------------------加载倒立摆资产----------------------------------'''
-asset_root = "assets"
+asset_root = "resources/cartpole"
 asset_file = "urdf/cartpole.urdf"
 # 提供默认选项，将基础链接固定为 True 
 asset_options = gymapi.AssetOptions()
