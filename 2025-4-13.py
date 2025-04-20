@@ -29,7 +29,7 @@ from isaacgym import gymutil
 gym = gymapi.acquire_gym()
 
 # parse arguments
-args = gymutil.parse_arguments(description="Joint control Methods Example")
+args = gymutil.parse_arguments(description="2. 创建倒立摆环境，可控制力矩，获取状态信息，期望位置&轨迹可视化")
 
 # create a simulator
 sim_params = gymapi.SimParams()
@@ -46,7 +46,7 @@ sim_params.physx.use_gpu = args.use_gpu
 sim_params.use_gpu_pipeline = False
 if args.use_gpu_pipeline:
     print("WARNING: Forcing CPU pipeline.")
-
+ 
 sim = gym.create_sim(args.compute_device_id, args.graphics_device_id, args.physics_engine, sim_params)
 
 if sim is None:
@@ -136,6 +136,7 @@ gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
 
 draw_sphere(env4,pos=[0,2,0])
 
+ 
 # Simulate
 while not gym.query_viewer_has_closed(viewer):
 

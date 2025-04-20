@@ -1,7 +1,7 @@
 import numpy as np
 from isaacgym import gymutil, gymapi
 from isaacgym.terrain_utils import *
-from math import sqrt
+ 
  
 # initialize gym
 gym = gymapi.acquire_gym()
@@ -12,7 +12,7 @@ custom_parameters = [
 ]
 
 # 调用 parse_arguments 函数
-args = gymutil.parse_arguments(description="2025-4-11,创建复杂地形：平地+上下斜坡+\
+args = gymutil.parse_arguments(description="1. 创建复杂地形：平地+上下斜坡+\
                         离散地形+上下台阶+平地",custom_parameters=custom_parameters)
 #PhysX引擎线程数
 args.num_threads=8
