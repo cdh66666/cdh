@@ -2,7 +2,8 @@ import numpy as np
 from isaacgym import gymutil, gymapi,gymtorch
 from isaacgym.terrain_utils import *
 import torch
-
+# 导入自定义库中的函数
+from utils.drawing_utils import draw_sphere
 '''--------------------------------设置仿真参数---------------------------------'''
 
 # initialize gym
@@ -43,7 +44,7 @@ if sim is None:
     quit()
  
 '''--------------------------------加载倒立摆资产----------------------------------'''
-asset_root = "resources/cartpole"
+asset_root = "resources/cartpole" 
 asset_file = "urdf/cartpole.urdf"
 # 提供默认选项，将基础链接固定为 True 
 asset_options = gymapi.AssetOptions()
@@ -180,9 +181,7 @@ gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
 '''--------------------------------订阅按键功能----------------------------------'''
 # subscribe to spacebar event for reset
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
-
-
-
+ 
 
 '''--------------------------------初始化状态----------------------------------'''
 # 获取自由度状态张量
@@ -252,7 +251,9 @@ while not gym.query_viewer_has_closed(viewer):
             # 初始化积分误差
             integral_error = torch.zeros(num_envs, device=device)       
 
-
+    for env in envs:
+        # 绘制球体
+        draw_sphere(gym,viewer,env, pos=[0, 0, 4])
 
     # step the physics
     gym.simulate(sim)

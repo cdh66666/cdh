@@ -81,7 +81,7 @@ cdh && cd ~/cdh && pip install -e . ##待定
 **5. 测试示例**
 - 运行以下代码，能出现仿真界面即安装成功：
 ```bash
-cdh && cd ~/cdh && python ./test/test.py
+cdh && cd ~/cdh && python test.py
 ```
 
 ### 调试
@@ -100,10 +100,10 @@ sudo apt-get install ninja-build
 
 **📚cdh文档**：
 1. 训练一个策略：
-  - `cdh && cd ~/cdh/scripts && python train.py`
+  - `cdh && cd ~/cdh && python train.py`
  
 
 2. 运行并导出最新的策略：
-  - `cdh && cd ~/cdh/scripts && python play.py`
+  - `cdh && cd ~/cdh && python play.py`
  
  
