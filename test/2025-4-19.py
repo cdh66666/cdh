@@ -23,7 +23,7 @@ custom_parameters = [
 # 指定使用GPU进行计算
 device = torch.device("cuda")
 # 调用 parse_arguments 函数
-args = gymutil.parse_arguments(description="3. 实现倒立摆pid仿真 ，gpu训练加速等",\
+args = gymutil.parse_arguments(description="3. 实现倒立摆pid仿真 ，gpu训练加速等,R键复位状态",\
                                custom_parameters=custom_parameters)
 #PhysX引擎线程数
 args.num_threads=8
@@ -201,7 +201,7 @@ dof_pos = dof_state.view(num_envs, num_dof, 2)[..., 0]
 dof_vel = dof_state.view(num_envs, num_dof, 2)[..., 1]
 # 生成环境id
 env_ids = np.arange(num_envs)
-
+ 
 #初始化GPU上环境变量
 gym.prepare_sim(sim)
 
