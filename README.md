@@ -54,7 +54,7 @@
 -  出现以下界面即安装成功：![猴子仿真界面](img_for_readme/image.png)
 
 
-**3. 安装rsl_rl库**
+<!-- **3. 安装rsl_rl库**
 
 - 从 [rsl_rl github仓库](https://github.com/leggedrobotics/rsl_rl) 下载ZIP。
 - 解压至主目录并更改文件夹名字：
@@ -65,23 +65,23 @@ unzip rsl_rl-main.zip -d ~ && mv ~/rsl_rl-main ~/rsl_rl
 ```bash
 cdh && cd ~/rsl_rl && pip install -e .
 ```
-- 出现**success**即安装成功。
+- 出现**success**即安装成功。 -->
  
  
-**4. 克隆仓库**
+**3. 克隆仓库**
 -  克隆本仓库至主目录：
 ```bash
 cd ~ && git clone https://github.com/cdh66666/cdh.git
 ```
-<!-- **4. 安装cdh**
+<!-- -  安装本仓库环境：
 ```bash
-cdh && cd ~/cdh && pip install -e . ##待定
+cdh && pip install tqdm
 ``` -->
 
-**5. 测试示例**
+**4. 测试示例**
 - 运行以下代码，能出现仿真界面即安装成功：
 ```bash
-cdh && cd ~/cdh && python test.py
+cdh && cd ~/cdh/cdh && python test.py
 ```
 
 ### 调试
@@ -100,10 +100,10 @@ sudo apt-get install ninja-build
 
 **📚cdh文档**：
 1. 训练一个策略：
-  - `cdh && cd ~/cdh && python train.py`
+  - `cdh && cd ~/cdh/cdh && python train.py`
  
 
 2. 运行并导出最新的策略：
-  - `cdh && cd ~/cdh && python play.py`
+  - `cdh && cd ~/cdh/cdh && python play.py`
  
  

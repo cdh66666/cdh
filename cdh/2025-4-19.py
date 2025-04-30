@@ -4,11 +4,7 @@ from isaacgym.terrain_utils import *
 import torch
 
 
-import sys
-from pathlib import Path
-# 获取父目录路径（~/）
-parent_dir = str(Path(__file__).resolve().parent.parent)  # 返回 ~/
-sys.path.append(parent_dir)
+ 
 # 导入自定义库中的函数
 from utils.cdh_utils import draw_sphere
 '''--------------------------------设置仿真参数---------------------------------'''

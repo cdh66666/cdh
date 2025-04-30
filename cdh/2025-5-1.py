@@ -7,6 +7,7 @@ import numpy as np
 # torch用于神经网络构建 和 优化器构建
 import torch
 
+import time  # 导入 time 模块
 # 导入自定义库中的函数
 from utils.cdh_utils import draw_sphere,initialize_environment 
 from utils.cdh_utils import create_simulation_terrain,reset_environment_states
@@ -17,8 +18,8 @@ from algorithms.ppo import PPO
  
 # 传入自定义参数
 custom_parameters = [
-    {"name": "--num_envs", "type": int, "default": 2, "help": "环境数量"},
-    {"name": "--episode_length", "type": int, "default": 10, "help": "每个回合的长度"}
+    {"name": "--num_envs", "type": int, "default": 60, "help": "环境数量"},
+    {"name": "--episode_length", "type": int, "default": 100, "help": "每个回合的长度"}
 ]
 desc = "4. 实现 PPO 算法(策略网络、价值网络、更新步骤等),构建奖励函数,计算奖励,实现DRL训练等。"
 
@@ -99,6 +100,7 @@ gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
 '''--------------------------------订阅按键功能----------------------------------'''
 # 订阅按键功能
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
+ 
 
 '''--------------------------------初始化状态----------------------------------'''
 # 初始化状态
@@ -126,6 +128,7 @@ log_probs = []
 rewards = []
 dones = []
 step_count = 0
+prev_ppo_return = None
 
 while not gym.query_viewer_has_closed(viewer):
     # Get input actions from the viewer and handle them appropriately
@@ -133,9 +136,11 @@ while not gym.query_viewer_has_closed(viewer):
         if evt.action == "reset" and evt.value > 0:
             # 随机初始化GPU上环境变量
             reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0.2, vel_range=0.5)
+ 
+
     for env in envs:
         # 绘制球体
-        draw_sphere(gym,viewer,env, pos=[0, 0, 4])
+        draw_sphere(gym, viewer, env, pos=[0, 0, 4])
         pass
 
     # step the physics
@@ -143,6 +148,7 @@ while not gym.query_viewer_has_closed(viewer):
     gym.fetch_results(sim, True)
 
     # update the viewer
+ 
     gym.step_graphics(sim)
     gym.draw_viewer(viewer, sim, True)
 
@@ -179,12 +185,13 @@ while not gym.query_viewer_has_closed(viewer):
     # 判断是否完成
     done = ppo.check_done(state)
     dones.append(done)
-
+ 
     step_count += 1
 
     # 检查是否达到回合长度
     if step_count % episode_length == 0:
-        pass
+        # 记录更新开始时间
+        start_time = time.time()
         # 转换为张量
         states = torch.cat(states, dim=0).squeeze()
         actions = torch.cat(actions, dim=0).squeeze()
@@ -193,7 +200,20 @@ while not gym.query_viewer_has_closed(viewer):
         dones = torch.cat(dones, dim=0).squeeze()
 
         # 更新PPO算法
-        ppo.update(states, actions, log_probs, rewards, dones)
+        ppo_return = ppo.update(states, actions, log_probs, rewards, dones) 
+
+        # 记录更新结束时间
+        end_time = time.time()
+        # 计算更新间隔时间
+        update_interval = end_time - start_time
+
+        if prev_ppo_return is not None:
+            diff = ppo_return - prev_ppo_return
+            print(f"本次更新后 ppo_return: {ppo_return:.4f}，相较于上次变化: {diff:.4f}，更新间隔时间: {update_interval:.4f} 秒")
+        else:
+            print(f"首次更新后 ppo_return: {ppo_return:.4f}，更新间隔时间: {update_interval:.4f} 秒")
+
+        prev_ppo_return = ppo_return
 
         # 重置存储
         states = []
