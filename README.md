@@ -73,10 +73,10 @@ cdh && cd ~/rsl_rl && pip install -e .
 ```bash
 cd ~ && git clone https://github.com/cdh66666/cdh.git
 ```
-<!-- -  安装本仓库环境：
+-  安装本仓库环境：
 ```bash
-cdh && pip install tqdm
-``` -->
+cdh && pip install tqdm matplotlib 
+```
 
 **4. 测试示例**
 - 运行以下代码，能出现仿真界面即安装成功：

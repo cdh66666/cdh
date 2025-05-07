@@ -1,25 +1,50 @@
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import collections
+import random
+import time
 
-# PPO算法超参数
-GAMMA = 0.9
-CLIP_PARAM = 0.2
-VALUE_LOSS_COEF = 0.5
-ENTROPY_COEF = 0.01
-LR = 3e-4
-NUM_EPOCHS = 10
-NUM_MINI_BATCHES = 4
+class ReplayBuffer:
+    ''' 经验回放池 '''
+    def __init__(self, capacity, device):
+        self.buffer = collections.deque(maxlen=capacity)  # 队列,先进先出
+        self.device = device
 
+    def add(self, state, action, log_prob, reward, next_state, done):  # 将数据加入buffer，新增 log_prob 参数
+        # 确保数据是 torch 张量并移到指定设备
+        state = state.to(self.device)
+        action = action.to(self.device) if isinstance(action, torch.Tensor) else torch.tensor(action, device=self.device)
+        log_prob = log_prob.to(self.device)  # 新增：处理 log_prob
+        reward = torch.tensor([reward], device=self.device, dtype=torch.float32)
+        next_state = next_state.to(self.device)
+        done = torch.tensor([done], device=self.device, dtype=torch.float32)
+        self.buffer.append((state, action, log_prob, reward, next_state, done))  # 新增 log_prob
+
+    def sample(self, batch_size):  # 从buffer中采样数据,数量为batch_size
+        transitions = random.sample(self.buffer, batch_size)
+        state, action, log_prob, reward, next_state, done = zip(*transitions)  # 新增 log_prob
+        # 将采样的数据堆叠成张量
+        state = torch.stack(state).to(self.device)
+        action = torch.stack(action).to(self.device)
+        log_prob = torch.stack(log_prob).to(self.device)  # 新增：处理 log_prob
+        reward = torch.cat(reward).to(self.device)
+        next_state = torch.stack(next_state).to(self.device)
+        done = torch.cat(done).to(self.device)
+        return state, action, log_prob, reward, next_state, done  # 新增 log_prob
+
+    def size(self):  # 目前buffer中数据的数量
+        return len(self.buffer)
 # 策略网络，生成动作概率分布
 class PolicyNetwork(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, input_dim, output_dim, hidden_dim=64):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc_mean = nn.Linear(64, output_dim)
-        self.fc_std = nn.Linear(64, output_dim)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc_mean = nn.Linear(hidden_dim, output_dim)
+        self.fc_std = nn.Linear(hidden_dim, output_dim)
         self.activation = nn.Tanh()
 
     def forward(self, x):
@@ -31,11 +56,11 @@ class PolicyNetwork(nn.Module):
 
 # 价值网络，估计状态价值
 class ValueNetwork(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, hidden_dim=64):
         super().__init__()
-        self.fc1 = nn.Linear(input_dim, 64)
-        self.fc2 = nn.Linear(64, 64)
-        self.fc_value = nn.Linear(64, 1)
+        self.fc1 = nn.Linear(input_dim, hidden_dim)
+        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+        self.fc_value = nn.Linear(hidden_dim, 1)
         self.activation = nn.Tanh()
 
     def forward(self, x):
@@ -46,12 +71,22 @@ class ValueNetwork(nn.Module):
 
 # PPO算法类
 class PPO:
-    def __init__(self, input_dim, output_dim, device):
+    def __init__(self, input_dim, output_dim, device, gamma=0.9,
+                 clip_param=0.2, value_loss_coef=0.5, entropy_coef=0.01,
+                 lr=3e-4, num_epochs=10, num_mini_batches=4, hidden_dim=64):
         self.device = device
-        self.policy = PolicyNetwork(input_dim, output_dim).to(device)
-        self.value = ValueNetwork(input_dim).to(device)
-        self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=LR)
-        self.value_optimizer = optim.Adam(self.value.parameters(), lr=LR)
+        self.gamma = gamma
+        self.clip_param = clip_param
+        self.value_loss_coef = value_loss_coef
+        self.entropy_coef = entropy_coef
+        self.lr = lr
+        self.num_epochs = num_epochs
+        self.num_mini_batches = num_mini_batches
+        # 传入隐藏层维度
+        self.policy = PolicyNetwork(input_dim, output_dim, hidden_dim).to(device)
+        self.value = ValueNetwork(input_dim, hidden_dim).to(device)
+        self.policy_optimizer = optim.Adam(self.policy.parameters(), lr=self.lr)
+        self.value_optimizer = optim.Adam(self.value.parameters(), lr=self.lr)
 
     def get_action(self, state):
         state = state.to(self.device)
@@ -73,19 +108,25 @@ class PPO:
         return done.detach()
 
     def update(self, states, actions, log_probs, rewards, dones):
+        # print(len(states))
+        # print(len(actions))
+        # print(len(log_probs))
+        # print(len(rewards))
+        # print(len(dones))
+        t1 = time.time()
         values = self.value(states).squeeze().detach()
         returns = []
         R = values[-1]
         for r, d in zip(reversed(rewards), reversed(dones)):
             d = d.float()
-            R = r + GAMMA * (1 - d) * R
-            returns.insert(0, R)
-        returns = torch.stack(returns).to(self.device)
+            R = r + self.gamma * (1 - d) * R
+            returns.append(R)  # 使用 append 方法
+        returns = torch.stack(returns[::-1]).to(self.device)  # 反转列表
         advantages = returns - values
 
-        for _ in range(NUM_EPOCHS):
-            for i in range(NUM_MINI_BATCHES):
-                indices = torch.randint(0, len(states), (len(states) // NUM_MINI_BATCHES,), device=self.device)
+        for _ in range(self.num_epochs):
+            for i in range(self.num_mini_batches):
+                indices = torch.randint(0, len(states), (len(states) // self.num_mini_batches,), device=self.device)
                 batch_states = states[indices]
                 batch_actions = actions[indices]
                 batch_old_log_probs = log_probs[indices]
@@ -99,8 +140,10 @@ class PPO:
 
                 ratio = torch.exp(new_log_probs - batch_old_log_probs)
                 surr1 = ratio * batch_advantages
-                surr2 = torch.clamp(ratio, 1 - CLIP_PARAM, 1 + CLIP_PARAM) * batch_advantages
-                policy_loss = -torch.min(surr1, surr2).mean() 
+                surr2 = torch.clamp(ratio, 1 - self.clip_param, 1 + self.clip_param) * batch_advantages
+                # 把熵项添加到策略损失中
+                policy_loss = -torch.min(surr1, surr2).mean() - self.entropy_coef * entropy.mean()
+
 
                 value_loss = (self.value(batch_states).squeeze() - batch_returns).pow(2).mean()
 
@@ -110,4 +153,7 @@ class PPO:
                 value_loss.backward()
                 self.policy_optimizer.step()
                 self.value_optimizer.step()
+
+        t2 = time.time()
+        print("update time:", t2 - t1)
         return returns.mean().item()
