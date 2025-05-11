@@ -6,8 +6,6 @@ from isaacgym import gymapi, gymtorch
 import numpy as np
 # torch用于神经网络构建 和 优化器构建
 import torch
-import collections
-import random
 from tqdm import tqdm
 import matplotlib.pyplot as plt  # 导入 matplotlib 库
  
@@ -16,37 +14,7 @@ from utils.cdh_utils import draw_sphere,initialize_environment
 from utils.cdh_utils import create_simulation_terrain,reset_environment_states
 from algorithms.ppo import PPO, ReplayBuffer  # 导入 ReplayBuffer 类
 
-class ReplayBuffer:
-    ''' 经验回放池 '''
-    def __init__(self, capacity, device):
-        self.buffer = collections.deque(maxlen=capacity)  # 队列,先进先出
-        self.device = device
-
-    def add(self, state, action, log_prob, reward, next_state, done):  # 将数据加入buffer，新增 log_prob 参数
-        # 确保数据是 torch 张量并移到指定设备
-        state = state.to(self.device)
-        action = action.to(self.device) if isinstance(action, torch.Tensor) else torch.tensor(action, device=self.device)
-        log_prob = log_prob.to(self.device)  # 新增：处理 log_prob
-        reward = torch.tensor([reward], device=self.device, dtype=torch.float32)
-        next_state = next_state.to(self.device)
-        done = torch.tensor([done], device=self.device, dtype=torch.float32)
-        self.buffer.append((state, action, log_prob, reward, next_state, done))  # 新增 log_prob
-
-    def sample(self, batch_size):  # 从buffer中采样数据,数量为batch_size
-        transitions = random.sample(self.buffer, batch_size)
-        state, action, log_prob, reward, next_state, done = zip(*transitions)  # 新增 log_prob
-        # 将采样的数据堆叠成张量
-        state = torch.stack(state).to(self.device)
-        action = torch.stack(action).to(self.device)
-        log_prob = torch.stack(log_prob).to(self.device)  # 新增：处理 log_prob
-        reward = torch.cat(reward).to(self.device)
-        next_state = torch.stack(next_state).to(self.device)
-        done = torch.cat(done).to(self.device)
-        return state, action, log_prob, reward, next_state, done  # 新增 log_prob
-
-    def size(self):  # 目前buffer中数据的数量
-        return len(self.buffer)
-
+import time
 
 '''--------------------------------初始化仿真环境----------------------------------'''
  
@@ -75,7 +43,7 @@ cartpole_asset = gym.load_asset(sim, asset_root, asset_file, asset_options)
 # 获取资产的自由度数量
 num_dof = gym.get_asset_dof_count(cartpole_asset)
 # 打印资产的自由度数量
-# print(f"\n倒立摆自由度数量: {num_dof}")
+print(f"\n自由度数量: {num_dof}")
 
 '''--------------------------------设置环境参数----------------------------------'''
 # 设置环境数量
@@ -115,7 +83,7 @@ for i in range(num_envs):
     dof_props['driveMode'] = (gymapi.DOF_MODE_EFFORT, gymapi.DOF_MODE_NONE)
     dof_props['stiffness'] = (0.0, 0.0)
     dof_props['damping'] = (0.0, 0.0)
-
+    #cart_dof_handle可以获取和设置dof位置和速度，但是力矩不行
     cart_dof_handle = gym.find_actor_dof_handle(env, cartpole_handle, 'slider_to_cart')
     cartpole_dof_handles.append(cart_dof_handle)
     gym.set_actor_dof_properties(env, cartpole_handle, dof_props)
@@ -137,7 +105,10 @@ if viewer is None:
 cam_pos = gymapi.Vec3(-2.124770, -6.526505, 10.728952)
 cam_target = gymapi.Vec3(6, 2.5, 2)
 gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
-
+for env in envs:
+    # 绘制球体
+    draw_sphere(gym, viewer, env, pos=[0, 0, 4])
+    pass
 '''--------------------------------订阅按键功能----------------------------------'''
 # 订阅按键功能
 gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
@@ -151,11 +122,18 @@ dof_pos = dof_state.view(num_envs, num_dof, 2)[..., 0]
 dof_vel = dof_state.view(num_envs, num_dof, 2)[..., 1]
 env_ids = torch.arange(num_envs, device=device)
 
+# 获取环境的位置和速度
+cart_pos = dof_pos[env_ids, 0] 
+cart_vel = dof_vel[env_ids, 0] 
+pole_pos = dof_pos[env_ids, 1] 
+pole_vel = dof_vel[env_ids, 1]
+
+# print("env_ids: ",env_ids)
 # 初始化GPU上环境变量
 gym.prepare_sim(sim)
 
 # 随机初始化GPU上环境变量
-reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0.2, vel_range=0.5)
+reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0, vel_range=0.1)
 
 '''--------------------------------初始化PPO算法----------------------------------'''
 # 初始化PPO算法
@@ -177,7 +155,7 @@ plt.show()
 
 # 开始仿真
 step_count = 0
-prev_ppo_return = None
+ 
 return_list = []  # 用于记录每次更新后的 returns
 update_count = 0  # 记录更新次数
 
@@ -189,20 +167,13 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
     for evt in gym.query_viewer_action_events(viewer):
         if evt.action == "reset" and evt.value > 0:
             # 随机初始化GPU上环境变量
-            reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0.2, vel_range=0.5)
+            reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0, vel_range=0.1)
+            print("重置环境状态")
 
-    for env in envs:
-        # 绘制球体
-        draw_sphere(gym, viewer, env, pos=[0, 0, 4])
-        pass
 
     # 获取环境的状态
     gym.refresh_dof_state_tensor(sim)
-    # 获取环境的位置和速度
-    cart_pos = dof_pos[env_ids, 0] 
-    cart_vel = dof_vel[env_ids, 0] 
-    pole_pos = dof_pos[env_ids, 1] 
-    pole_vel = dof_vel[env_ids, 1]
+
     # 组合状态
     state = torch.stack([cart_pos, cart_vel, pole_pos, pole_vel], dim=1)
     # 执行动作
@@ -224,11 +195,8 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
 
     # 获取下一个状态
     gym.refresh_dof_state_tensor(sim)
-    cart_pos_next = dof_pos[env_ids, 0] 
-    cart_vel_next = dof_vel[env_ids, 0] 
-    pole_pos_next = dof_pos[env_ids, 1] 
-    pole_vel_next = dof_vel[env_ids, 1]
-    next_state = torch.stack([cart_pos_next, cart_vel_next, pole_pos_next, pole_vel_next], dim=1)
+
+    next_state = torch.stack([cart_pos, cart_vel, pole_pos, pole_vel], dim=1)
 
     # 计算奖励
     reward = ppo.calculate_reward(next_state)
@@ -268,7 +236,7 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
         # 更新 tqdm 进度条，添加 CPU 和 GPU 利用率信息
         pbar.update(1)
         pbar.set_postfix_str(f"GPU: {gpu_percent:.1f}%")
-
+        # print("size:",replay_buffer.size())
         # 实时更新绘图
         episodes_list = list(range(len(return_list)))
         line.set_xdata(episodes_list)
@@ -278,16 +246,17 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
         ax.autoscale_view()
         fig.canvas.draw()
         fig.canvas.flush_events()
-
-        prev_ppo_return = ppo_return
+ 
 
         # 重置环境
-        reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0, vel_range=0.5)  
+        reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0, vel_range=0.1)  
 
         update_count += 1
+        import time
+        time.sleep(10)
 
 # 显示最终绘图
-plt.show()
+# plt.show()
 
 '''--------------------------------仿真结束清理----------------------------------'''
 # 关闭 tqdm 进度条

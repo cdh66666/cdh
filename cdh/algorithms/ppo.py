@@ -73,7 +73,7 @@ class ValueNetwork(nn.Module):
 class PPO:
     def __init__(self, input_dim, output_dim, device, gamma=0.9,
                  clip_param=0.2, value_loss_coef=0.5, entropy_coef=0.01,
-                 lr=3e-4, num_epochs=10, num_mini_batches=4, hidden_dim=64):
+                 lr=0.01, num_epochs=10, num_mini_batches=4, hidden_dim=64):
         self.device = device
         self.gamma = gamma
         self.clip_param = clip_param
@@ -99,12 +99,14 @@ class PPO:
     def calculate_reward(self, state):
         cart_pos = state[:, 0]
         pole_pos = state[:, 2]
-        reward = 1 - torch.abs(pole_pos) - 0.1 * torch.abs(cart_pos)
+        reward = 10- - torch.abs(pole_pos) - torch.abs(cart_pos)
         return reward.detach()
 
     def check_done(self, state):
         pole_pos = state[:, 2]
-        done = torch.abs(pole_pos) > torch.tensor(np.pi / 2, device=self.device)
+        print("pole_pos: ",pole_pos)
+        done = torch.abs(pole_pos) > torch.tensor(np.pi / 4, device=self.device)
+        print("done: ",done)
         return done.detach()
 
     def update(self, states, actions, log_probs, rewards, dones):
@@ -155,5 +157,5 @@ class PPO:
                 self.value_optimizer.step()
 
         t2 = time.time()
-        print("update time:", t2 - t1)
+        # print("update time:", t2 - t1)
         return returns.mean().item()
