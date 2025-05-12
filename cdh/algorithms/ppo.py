@@ -99,28 +99,26 @@ class PPO:
     def calculate_reward(self, state):
         cart_pos = state[:, 0]
         pole_pos = state[:, 2]
-        reward = 10- - torch.abs(pole_pos) - torch.abs(cart_pos)
+        # 修改奖励计算方式，使用指数函数，k 是衰减系数，可根据实际情况调整
+        k = 1.0  # 可以调整这个值来控制奖励衰减的速度
+        # reward = torch.exp(-2.0 * torch.abs(pole_pos))+torch.exp(-1.0 * torch.abs(cart_pos))
+        reward = torch.exp(-1.0 * torch.abs(pole_pos))
+        # print("pole_pos:", pole_pos)
+        # print("reward:", reward)
         return reward.detach()
 
     def check_done(self, state):
         pole_pos = state[:, 2]
-        print("pole_pos: ",pole_pos)
-        done = torch.abs(pole_pos) > torch.tensor(np.pi / 4, device=self.device)
-        print("done: ",done)
+        done = torch.abs(pole_pos) > torch.tensor(np.pi / 2, device=self.device)
+        # print("done:", done)
         return done.detach()
 
     def update(self, states, actions, log_probs, rewards, dones):
-        # print(len(states))
-        # print(len(actions))
-        # print(len(log_probs))
-        # print(len(rewards))
-        # print(len(dones))
         t1 = time.time()
         values = self.value(states).squeeze().detach()
         returns = []
         R = values[-1]
         for r, d in zip(reversed(rewards), reversed(dones)):
-            d = d.float()
             R = r + self.gamma * (1 - d) * R
             returns.append(R)  # 使用 append 方法
         returns = torch.stack(returns[::-1]).to(self.device)  # 反转列表

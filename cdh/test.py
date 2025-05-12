@@ -122,11 +122,7 @@ dof_pos = dof_state.view(num_envs, num_dof, 2)[..., 0]
 dof_vel = dof_state.view(num_envs, num_dof, 2)[..., 1]
 env_ids = torch.arange(num_envs, device=device)
 
-# 获取环境的位置和速度
-cart_pos = dof_pos[env_ids, 0] 
-cart_vel = dof_vel[env_ids, 0] 
-pole_pos = dof_pos[env_ids, 1] 
-pole_vel = dof_vel[env_ids, 1]
+
 
 # print("env_ids: ",env_ids)
 # 初始化GPU上环境变量
@@ -173,7 +169,11 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
 
     # 获取环境的状态
     gym.refresh_dof_state_tensor(sim)
-
+    # 获取环境的位置和速度
+    cart_pos = dof_pos[env_ids, 0] 
+    cart_vel = dof_vel[env_ids, 0] 
+    pole_pos = dof_pos[env_ids, 1] 
+    pole_vel = dof_vel[env_ids, 1]
     # 组合状态
     state = torch.stack([cart_pos, cart_vel, pole_pos, pole_vel], dim=1)
     # 执行动作
@@ -181,7 +181,7 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
 
     # 记录当前状态
     current_state = state.clone()
-
+    # print("current_state: ",current_state)
     # 设置 DOF 驱动力
     dof_actuation_force_tensor = torch.zeros((num_envs * num_dof), device=device, dtype=torch.float)
     # 假设第一个自由度受动作影响
@@ -195,7 +195,11 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
 
     # 获取下一个状态
     gym.refresh_dof_state_tensor(sim)
-
+    # 获取环境的位置和速度
+    cart_pos = dof_pos[env_ids, 0] 
+    cart_vel = dof_vel[env_ids, 0] 
+    pole_pos = dof_pos[env_ids, 1] 
+    pole_vel = dof_vel[env_ids, 1]
     next_state = torch.stack([cart_pos, cart_vel, pole_pos, pole_vel], dim=1)
 
     # 计算奖励
@@ -206,7 +210,7 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
 
     # 将数据添加到经验回放池，新增 log_prob
     for s, a, lp, r, ns, d in zip(current_state, action, log_prob, reward, next_state, done):
-        replay_buffer.add(s, a, lp, r.item(), ns, d.item())
+        replay_buffer.add(s, a, lp, r, ns, d)
 
     step_count += 1
 
@@ -252,8 +256,7 @@ while not gym.query_viewer_has_closed(viewer) and update_count < total_train_epi
         reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0, vel_range=0.1)  
 
         update_count += 1
-        import time
-        time.sleep(10)
+
 
 # 显示最终绘图
 # plt.show()
