@@ -1,8 +1,9 @@
 from isaacgym import gymutil, gymapi, gymtorch
 # 导入Isaac Gym环境中的一些函数和类，用于创建地形
 from isaacgym.terrain_utils import *
+import numpy as np
 import torch
-
+ 
 
 def draw_sphere(gym,viewer,env, pos=[0, 0, 0]):
     # 创建一个线框球体的几何参数对象
@@ -68,7 +69,25 @@ def initialize_environment(custom_parameters=None, description=None):
         print("*** Failed to create sim")
         quit()
 
-    return gym, sim, args, device
+    '''--------------------------------创建Viewer查看器----------------------------------'''
+    # 创建Viewer查看器
+    viewer = gym.create_viewer(sim, gymapi.CameraProperties())
+    if viewer is None:
+        print("*** Failed to create viewer")
+        quit()
+
+    # 设置查看器初始位置和目标位置
+    cam_pos = gymapi.Vec3(-2.124770, -6.526505, 10.728952)
+    cam_target = gymapi.Vec3(6, 2.5, 2)
+    gym.viewer_camera_look_at(viewer, None, cam_pos, cam_target)
+
+    # 创建仿真环境的地形    
+    create_simulation_terrain(gym, sim, device)
+
+    # 订阅按键功能
+    gym.subscribe_viewer_keyboard_event(viewer, gymapi.KEY_R, "reset")
+    
+    return gym, sim, args, device,viewer
 
 
 
@@ -155,6 +174,144 @@ def reset_environment_states(gym, sim, num_envs, num_dof, device, pos_range=0.2,
     random_state_tensor[:, 0] = random_positions
     # 赋值随机速度
     random_state_tensor[:, 1] = random_velocities
-
+ 
     # 将 PyTorch 张量转换为 Isaac Gym 可以处理的格式并更新仿真状态
     gym.set_dof_state_tensor(sim, gymtorch.unwrap_tensor(random_state_tensor))
+    return random_state_tensor.view(-1, 4)
+
+
+
+
+class IsaacCartPoleEnv:
+    def __init__(self):
+        # 传入自定义参数
+        self.custom_parameters = [
+            {"name": "--num_envs", "type": int, "default": 512, "help": "环境数量"},
+            {"name": "--episode_length", "type": int, "default": 300, "help": "每个回合的长度"},
+            {"name": "--total_train_episodes", "type": int, "default": 100, "help": "总共训练轮数"},
+            {"name": "--batch_size", "type": int, "default": 2, "help": "采样批次大小"},
+            {"name": "--buffer_capacity", "type": int, "default": 10, "help": "经验回放池容量"}
+        ]
+        self.desc = "5. 完善DRL代码，优化算法，快速训练，实现倒立摆直立。"
+
+        self.gym, self.sim, self.args, self.device = initialize_environment(custom_parameters=self.custom_parameters, description=self.desc)
+
+        # 加载倒立摆资产
+        self.asset_root = "resources/cartpole"
+        self.asset_file = "urdf/cartpole.urdf"
+        self.asset_options = gymapi.AssetOptions()
+        self.asset_options.fix_base_link = True
+        self.cartpole_asset = self.gym.load_asset(self.sim, self.asset_root, self.asset_file, self.asset_options)
+        self.num_dof = self.gym.get_asset_dof_count(self.cartpole_asset)
+        print(f"\n自由度数量: {self.num_dof}")
+
+        # 设置环境参数
+        self.num_envs = self.args.num_envs
+        self.episode_length = self.args.episode_length
+        self.total_train_episodes = self.args.total_train_episodes
+        self.batch_size = self.args.batch_size
+        self.buffer_capacity = self.args.buffer_capacity
+
+        self.num_per_row = 30
+        self.env_spacing = 0.5
+        self.env_lower = gymapi.Vec3(-self.env_spacing, -self.env_spacing, 0.0)
+        self.env_upper = gymapi.Vec3(self.env_spacing, self.env_spacing, self.env_spacing)
+        self.pose = gymapi.Transform()
+        self.pose.p = gymapi.Vec3(0.0, 0.0, 4.0)
+        self.pose.r = gymapi.Quat(0, 0.0, 0.0, 1)
+
+        # 创建倒立摆环境
+        np.random.seed(0)
+        torch.manual_seed(0)
+        self.cartpole_handles = []
+        self.cartpole_dof_handles = []
+        self.envs = []
+        for i in range(self.num_envs):
+            env = self.gym.create_env(self.sim, self.env_lower, self.env_upper, self.num_per_row)
+            self.envs.append(env)
+            cartpole_handle = self.gym.create_actor(env, self.cartpole_asset, self.pose, "cartpole", i + 1, 1, 0)
+            self.cartpole_handles.append(cartpole_handle)
+            dof_props = self.gym.get_actor_dof_properties(env, cartpole_handle)
+            dof_props['driveMode'] = (gymapi.DOF_MODE_EFFORT, gymapi.DOF_MODE_POS)
+            dof_props['stiffness'] = (0.0, 10.0)
+            dof_props['damping'] = (0.0, 1.0)
+            cart_dof_handle = self.gym.find_actor_dof_handle(env, cartpole_handle, 'slider_to_cart')
+            self.cartpole_dof_handles.append(cart_dof_handle)
+            self.gym.set_actor_dof_properties(env, cartpole_handle, dof_props)
+
+        # 创建仿真环境的地形
+        create_simulation_terrain(self.gym, self.sim, self.device)
+
+        # 创建Viewer查看器
+        self.viewer = self.gym.create_viewer(self.sim, gymapi.CameraProperties())
+        if self.viewer is None:
+            print("*** Failed to create viewer")
+            quit()
+
+        # 设置查看器初始位置和目标位置
+        cam_pos = gymapi.Vec3(-2.124770, -6.526505, 10.728952)
+        cam_target = gymapi.Vec3(6, 2.5, 2)
+        self.gym.viewer_camera_look_at(self.viewer, None, cam_pos, cam_target)
+        for env in self.envs:
+            draw_sphere(self.gym, self.viewer, env, pos=[0, 0, 4])
+
+        # 订阅按键功能
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_R, "reset")
+
+        # 初始化状态
+        self.dof_state_tensor = self.gym.acquire_dof_state_tensor(self.sim)
+        self.dof_state = gymtorch.wrap_tensor(self.dof_state_tensor)
+        self.dof_pos = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 0]
+        self.dof_vel = self.dof_state.view(self.num_envs, self.num_dof, 2)[..., 1]
+        self.env_ids = torch.arange(self.num_envs, device=self.device)
+
+        self.gym.prepare_sim(self.sim)
+        reset_environment_states(self.gym, self.sim, self.num_envs, self.num_dof, self.device, pos_range=0, vel_range=0.1)
+
+    def get_state(self):
+        self.gym.refresh_dof_state_tensor(self.sim)
+        cart_pos = self.dof_pos[self.env_ids, 0]
+        cart_vel = self.dof_vel[self.env_ids, 0]
+        pole_pos = self.dof_pos[self.env_ids, 1]
+        pole_vel = self.dof_vel[self.env_ids, 1]
+        state = torch.stack([cart_pos, cart_vel, pole_pos, pole_vel], dim=1)
+        return state
+
+    def step(self, action):
+        dof_actuation_force_tensor = torch.zeros((self.num_envs * self.num_dof), device=self.device, dtype=torch.float)
+        dof_actuation_force_tensor[::self.num_dof] = action.squeeze()
+        self.gym.set_dof_actuation_force_tensor(self.sim, gymtorch.unwrap_tensor(dof_actuation_force_tensor))
+
+        self.gym.simulate(self.sim)
+        self.gym.fetch_results(self.sim, True)
+
+        next_state = self.get_state()
+        return next_state
+
+    def reset(self):
+        reset_environment_states(self.gym, self.sim, self.num_envs, self.num_dof, self.device, pos_range=1, vel_range=0.2)
+
+    def close(self):
+        self.gym.destroy_viewer(self.viewer)
+        self.gym.destroy_sim(self.sim)
+
+    def handle_events(self):
+        for evt in self.gym.query_viewer_action_events(self.viewer):
+            if evt.action == "reset" and evt.value > 0:
+                reset_environment_states(self.gym, self.sim, self.num_envs, self.num_dof, self.device, pos_range=0, vel_range=0.1)
+                print("重置环境状态")
+
+    def render(self):
+        self.gym.step_graphics(self.sim)
+        self.gym.draw_viewer(self.viewer, self.sim, True)
+
+    def get_env_info(self):
+        return {
+            "num_envs": self.num_envs,
+            "episode_length": self.episode_length,
+            "total_train_episodes": self.total_train_episodes,
+            "batch_size": self.batch_size,
+            "buffer_capacity": self.buffer_capacity,
+            "device": self.device
+        }
+    

@@ -75,7 +75,8 @@ cd ~ && git clone https://github.com/cdh66666/cdh.git
 ```
 -  安装本仓库环境：
 ```bash
-cdh && pip install tqdm matplotlib 
+cdh && conda install tqdm matplotlib pynvml
+cdh && conda install -c conda-forge gymnasium
 ```
 
 **4. 测试示例**
